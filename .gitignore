@@ -1,0 +1,5 @@
+data/
+notebooks/.ipynb_checkpoints/
+notebooks/logs/
+notebooks/models/
+.*
