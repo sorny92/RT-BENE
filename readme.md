@@ -1,6 +1,6 @@
 # RT-BENE: detección de parpadeo
 
-[Link](informe.pdf) al trabajo entero.
+[Link](docs/out/informe.pdf) al trabajo entero.
 
 Resumen
 =======
@@ -36,4 +36,3 @@ estas corresponden a un parpadeo o no. Dicho problema se puede
 considerar como un problema de clasificación donde hay que predecir si
 para dicha entrada se corresponde una clase u otra. En este caso como
 solo hay una salida se define como clasificación binaria.
-
