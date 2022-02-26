@@ -5,6 +5,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
 \usepackage{wrapfig}
+\usepackage{hyperref}
 \graphicspath{ {assets/} }
 
 \title{RT-BENE: detección de parpadeo}
@@ -23,7 +24,10 @@
     El segundo modelo está también basado en un modelo preentrenado de Keras pero en este caso sí que se tiene en
     cuenta la distribución de las clases en el dataset y se utilizan técnicas de aumento de datos para corregir la
     sobre-representación de la clase “no parpadeo” con respecto a “parpadeo”.\\
-    En este proyecto se consigue un F1-score de 0.99 en el testset.
+    En este proyecto se consigue un F1-score de 0.9546 en el testset.
+
+    Aquí se encuentran los notebooks con el código de este trabajo:
+    \url{https://github.com/sorny92/RT-BENE/blob/main/notebooks/}
 
 
     \section{Introducción}
@@ -92,43 +96,94 @@
     Esto deja alrededor de 20.000 imágenes para test.\\
     En la partición de entrenamiento se parte el dataset en dos para generar el set de validación.
     Se podría utilizar un sistema de k-fold para la validación pero en el entrenamiento de redes neuronales
-    profundas se vuelve demasiado pesado para ser eficiente en el tiempo. El set de validación tiene
-    un tamaño de 17.000 imágenes aproximadamente.
+    profundas se vuelve demasiado pesado para ser eficiente en el tiempo.
+    El set de validación tiene un tamaño de 17.000 imágenes aproximadamente.
 
     \subsection*{Lectura y generador de datos}
     Se crea una clase que permite cargar los datos del fichero .csv y permitir la carga dinámica de las
-    imágenes antes de que sean necesitadas. Eso se hace mediante el uso de la librería tf.data
-    .Dataset\cite{tfdata_dataset}.
+    imágenes antes de que sean necesitadas.
+    Esto se hace mediante el uso de la librería tf.data.Dataset\cite{tfdata_dataset}.
     El generador de datos sigue el siguiente proceso:
-    \begin{verbatim}
-        print("La vida")
-    \end{verbatim}
     \begin{enumerate}
-        \item
+        \item Se crea una clase que cada vez que es invocada devuelve la pareja de rutas de imágenes de ojos y su
+        etiqueta.
+        \item Se utiliza la función .map(), que permite invocar de manera paralela y eficiente tareas pesadas, para
+        cargar las imágenes en memoria y poner los valores de píxel de las imágenes en el rango [0,1].
+        \item En la segunda versión de los modelos que se generan además existe un paso de aumento de datos que
+        también se ejecuta mediante una función .map() de tf.Dataset.
+        En un punto posterior se explica más en detalle el aumento de datos.
     \end{enumerate}
 
     \subsection*{Generación de modelos}
     Para la resolución del problema se necesita un modelo que contenga dos entradas, una por cada ojo, y una salida,
-    parpadeo o no. La aproximación obvia es tratar de utilizar un modelo preentrenado ya que permitiría ahorrar tiempo
-    de entrenamiento comparado a un modelo inicializado sin preentrenamiento. Se procede a utilizar el zoo de Keras\cite[Insertar?cita?keras]
-    ya que contiene una variedad interesante de modelos preentrenados en grandes datasets como Imagenet.
-    El problema del zoo de Keras es que no tiene ningún modelo que use dos entradas. Se podría entrenar un modelo desde
-    una inicialización random pero es sabido que el preentrenamiento suele llegar a una solución válida antes.
+    parpadeo o no.
+    La aproximación obvia es tratar de utilizar un modelo preentrenado ya que permitiría ahorrar tiempo de
+    entrenamiento comparado a un modelo inicializado sin preentrenamiento.
+    Se procede a utilizar el zoo de Keras\cite{keras_applications}    ya que contiene una variedad interesante de
+    modelos preentrenados en grandes datasets como Imagenet.
+    El problema del zoo de Keras es que no tiene ningún modelo que use dos entradas.
+    Se podría entrenar un modelo desde una inicialización random pero es sabido que el preentrenamiento suele llegar
+    a una solución válida antes.
 
     Para utilizar el modelo preentrenado se crea un modelo con dos entradas donde cada entrada es seguida de un
-    extractor de características seleccionado del zoo de modelos. Después la salida de los dos modelos es concatenada
-    para ser conectada a una serie de capas totalmente conectadas.
+    extractor de características seleccionado del zoo de modelos.
+    Después la salida de los dos modelos es concatenada para ser conectada a una serie de capas totalmente conectadas.
 
     Esta arquitectura permite utilizar dos entradas pero también un modelo preentrenado así podemos converger a una
     solución más rápidamente.
 
     En la primera versión se usa un modelo VGG16 preentrenado en imagenet en cada rama para después añadir 2 capas
-    totalmente conectadas: la primera con 128 nodos y la segunda con 1 ya que es la salida. El modelo en total contiene
-    29.560.705 parámetros.
+    totalmente conectadas: la primera con 128 nodos y la segunda con 1 ya que es la salida.
+    El modelo en total contiene 29.560.705 parámetros.
 
-    La segunda versión utiliza DenseNet121 también preentrenado en imagenet. La arquitectura es similar a la anterior c
+    La segunda versión utiliza DenseNet121 también preentrenado en imagenet.
+    La arquitectura es similar a la anterior anterior solo que en esta el extractor de características es diferente y
+    los nodes totalmente conectados tienen una configuración un poco más grande.
+    En este caso se utilizan tres capas totalmente conectadas con 256, 128 y 1 nodos respectivamente.
+    A cada capa del modelo se le añade un componente regulizador de los pesos de manera que se pueda tener una solución
+    más genérica y evitar el sobreentrenamiento.
+    En el siguiente punto se indica como se han elegido los valores.
+    También se le añade una inicialización de pesas para la última capa basado en el algoritmo Xavier\cite{Xavier_init}.
+    El modelo en total contiene 14.632.577 de los cuales 14.465.281 se pueden entrenar.
+
+    En ambos modelos se usa relu como función de activación en las capas totalmente conectadas.
+    También se usa la función sigmoide para la salida ya que es la que permite hacer una clasificación
+    binaria.
+
+    \subsection{Entrenamiento}
+    En el proceso de entrenamiento se utiliza una función de pérdida BinaryCrossEntropy ya que es la que se utiliza
+    en problemas de clasificación binaria y el optimizador Adam.
+
+    \subsubsection{Modelo VGG16}
+    En el modelo basado en VGG16 se entrena leyendo el dataset según el generador produce valores.
+    En cada época se aleatoriza el dataset así no se tiene el mismo orden de imágenes todo el tiempo.
+    Este entrenamiento se continua hasta un máximo de 40 épocas.
+    Se utiliza un callback que para el entrenamiento si después de 5 épocas no se mejora la métrica de F1 de
+    validación.
+
+    \subsubsection{Modelo DenseNet121}
+    En el caso del modelo basado en DenseNet121 el entrenamiento además incluye aumento de datos y equilibrado de
+    clases.
+
+    Para equilibrar el número de apariciones de cada clase se divide el dataset de entrenamiento en 2 tablas: la
+    tabla con los parpadeos y la tabla sin parpadeos.
+    A continuación durante el entrenamiento se escoge con una probabilidad del 40\% y 60\% de cada clase, parpadeo y
+    no parpadeo respectivamente.
+    Se decide usar una proporción 40\-60 ya que se evita repetir lo máximo posible la clase que está infra-representada.
+    \\
+
+    Para el aumento de datos se utiliza la librería Albumentations\cite{albumentations}.
+    Se usa esta librería porque es rápida y flexible.
+    Permite una gran variabilidad de modificaciones y además son usables en otro tipo de problemas como detección de
+    objetos o segmentación semántica.
+    En este caso se utilizan las siguiente técnicas de aumento de datos: rotación, modificación del brillo,
+    compresión JPEG, modificación de saturación y hue, modificación del contraste, imagen espejo.
+    Estas modificaciones se producen aleatoriamente en un rango que queda definido en el código de este trabajo.
 
 
+
+    En las capas de extractor de características se utiliza una regularización más suave que en los capaz totalmente
+    conectadas ya que en
 
 
     \section{Resultados}
