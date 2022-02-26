@@ -107,6 +107,29 @@
         \item
     \end{enumerate}
 
+    \subsection*{Generación de modelos}
+    Para la resolución del problema se necesita un modelo que contenga dos entradas, una por cada ojo, y una salida,
+    parpadeo o no. La aproximación obvia es tratar de utilizar un modelo preentrenado ya que permitiría ahorrar tiempo
+    de entrenamiento comparado a un modelo inicializado sin preentrenamiento. Se procede a utilizar el zoo de Keras\cite[Insertar?cita?keras]
+    ya que contiene una variedad interesante de modelos preentrenados en grandes datasets como Imagenet.
+    El problema del zoo de Keras es que no tiene ningún modelo que use dos entradas. Se podría entrenar un modelo desde
+    una inicialización random pero es sabido que el preentrenamiento suele llegar a una solución válida antes.
+
+    Para utilizar el modelo preentrenado se crea un modelo con dos entradas donde cada entrada es seguida de un
+    extractor de características seleccionado del zoo de modelos. Después la salida de los dos modelos es concatenada
+    para ser conectada a una serie de capas totalmente conectadas.
+
+    Esta arquitectura permite utilizar dos entradas pero también un modelo preentrenado así podemos converger a una
+    solución más rápidamente.
+
+    En la primera versión se usa un modelo VGG16 preentrenado en imagenet en cada rama para después añadir 2 capas
+    totalmente conectadas: la primera con 128 nodos y la segunda con 1 ya que es la salida. El modelo en total contiene
+    29.560.705 parámetros.
+
+    La segunda versión utiliza DenseNet121 también preentrenado en imagenet. La arquitectura es similar a la anterior c
+
+
+
 
     \section{Resultados}
 
