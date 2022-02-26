@@ -5,7 +5,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
 \usepackage{wrapfig}
-\graphicspath{ {images/} }
+\graphicspath{ {assets/} }
 
 \title{RT-BENE: detección de parpadeo}
 \author{Esteve Soria Fabián}
@@ -90,7 +90,22 @@
     La partición se hace mediante selección aleatoria ya que se considera que la selección estratificada no es
     necesaria ya que el dataset tiene una distribución de clases en cada video relativamente similar.
     Esto deja alrededor de 20.000 imágenes para test.\\
-    En la partición de entrenamiento
+    En la partición de entrenamiento se parte el dataset en dos para generar el set de validación.
+    Se podría utilizar un sistema de k-fold para la validación pero en el entrenamiento de redes neuronales
+    profundas se vuelve demasiado pesado para ser eficiente en el tiempo. El set de validación tiene
+    un tamaño de 17.000 imágenes aproximadamente.
+
+    \subsection*{Lectura y generador de datos}
+    Se crea una clase que permite cargar los datos del fichero .csv y permitir la carga dinámica de las
+    imágenes antes de que sean necesitadas. Eso se hace mediante el uso de la librería tf.data
+    .Dataset\cite{tfdata_dataset}.
+    El generador de datos sigue el siguiente proceso:
+    \begin{verbatim}
+        print("La vida")
+    \end{verbatim}
+    \begin{enumerate}
+        \item
+    \end{enumerate}
 
 
     \section{Resultados}
