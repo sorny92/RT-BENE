@@ -3,6 +3,7 @@
 
 \documentclass[12pt]{article}
 \usepackage[utf8]{inputenc}
+\usepackage[a4paper, total={6in, 8in}]{geometry}
 \usepackage{graphicx}
 \usepackage{wrapfig}
 \usepackage{hyperref}
@@ -68,6 +69,11 @@
     Por ejemplo, al tener un video de cada persona no tenemos la misma cantidad de imágenes por cada persona.
     Si el desbalance es muy importante se podría sobreentrenar sobre una persona determinada y no ser posible predecir
     correctamente sobre una población ya que pertenece a un dominio diferente.\\
+    \begin{wrapfigure}{r}{0.25\textwidth} %this figure will be at the right
+        \centering
+        \includegraphics[width=0.25\textwidth]{drtA5y}
+        \caption{Tabla con imágenes por video y porcentaje de parpadeos por video}
+    \end{wrapfigure}
     En el caso de este dataset no existe un video con una cantidad relativamente grande de imágenes con respecto a
     las demás por tanto no se rebalancea con respecto al identificador del video.\\
     Otra observación del dataset que si que se tiene en cuenta es el balance de la clase a predecir.
@@ -75,14 +81,7 @@
     Esto significa que si no se utilizan medidas para corregir el desbalance producirá un efecto negativo en la
     capacidad del modelo de predecir correctamente.
 
-    \newpage
     \subsection*{Partición de datos}
-
-    \begin{wrapfigure}{r}{0.3\textwidth} %this figure will be at the right
-        \centering
-        \includegraphics[width=0.3\textwidth]{drtA5y}
-        \caption{Tabla con imágenes por video y porcentaje de parpadeos por video}
-    \end{wrapfigure}
 
     Se parte el dataset en tres particiones.
     Una partición de entrenamiento, otra de validación y otra de test.\\
@@ -139,7 +138,8 @@
     La segunda versión utiliza DenseNet121 también preentrenado en imagenet.
     La arquitectura es similar a la anterior anterior solo que en esta el extractor de características es diferente y
     los nodes totalmente conectados tienen una configuración un poco más grande.
-    En este caso se utilizan tres capas totalmente conectadas con 256, 128 y 1 nodos respectivamente.
+    En este caso se utilizan tres capas totalmente conectadas con 256, 128 y 1 nodos respectivamente, además las dos
+    primeras tienen una capa dropout para mayor regularización.
     A cada capa del modelo se le añade un componente regulizador de los pesos de manera que se pueda tener una solución
     más genérica y evitar el sobreentrenamiento.
     En el siguiente punto se indica como se han elegido los valores.
@@ -154,11 +154,13 @@
     En el proceso de entrenamiento se utiliza una función de pérdida BinaryCrossEntropy ya que es la que se utiliza
     en problemas de clasificación binaria y el optimizador Adam.
 
+    En cada época se aleatoriza el dataset así no se tiene el mismo orden de imágenes todo el tiempo evitando una
+    fuente de sesgos.
+
     \subsubsection{Modelo VGG16}
     En el modelo basado en VGG16 se entrena leyendo el dataset según el generador produce valores.
-    En cada época se aleatoriza el dataset así no se tiene el mismo orden de imágenes todo el tiempo.
     Este entrenamiento se continua hasta un máximo de 40 épocas.
-    Se utiliza un callback que para el entrenamiento si después de 5 épocas no se mejora la métrica de F1 de
+    Se utiliza un callback que detiene el entrenamiento si después de 5 épocas no se mejora la métrica de F1 de
     validación.
 
     \subsubsection{Modelo DenseNet121}
@@ -180,16 +182,60 @@
     compresión JPEG, modificación de saturación y hue, modificación del contraste, imagen espejo.
     Estas modificaciones se producen aleatoriamente en un rango que queda definido en el código de este trabajo.
 
-
-
     En las capas de extractor de características se utiliza una regularización más suave que en los capaz totalmente
-    conectadas ya que en
+    conectadas ya que el extractor de características ya está preentrenado y por tanto no se quiere modificar mucho
+    sus valores.
+
+    Como método de entrenamiento también se usa Adam pero se comienza con una learning rate más bajo, 1·10⁻³ en vez
+    del por defecto 0.01.
+    Por último se añade un callback que reduce el learning rate cada 5 épocas de esta manera se puede converger a una
+    solución más ajustada al dataset.
 
 
+    \newpage
     \section{Resultados}
+
+    \begin{figure}[h]
+        \centering
+        \includegraphics[width=0.7\textwidth]{graph_result}
+        \caption{Gráfica de F1-score por época en en test de validación. DenseNet121 y VGG16 entrenados en todas las
+        capas.
+        DenseNet121 feat\_ext solo en las capas completamente conectadas.}\label{fig:figure2}
+    \end{figure}
+
+    Los resultados siguientes se consiguen en una máquina con procesador AMD Ryzen 5600 y GPU Nvidia GTX1080.
+    El tiempo de ejecución por batch de 256 imágenes es de aproximadamente \textbf{450ms}. Cada época se procesa en
+    60s aproximadamente.
+
+    Dado que el dataset utilizado en este proyecto tiene un dominio diferente a imagenet se presupone que se requiere
+    entrenar todas las capas de la red para tener mayor precisión.
+    Experimentalmente se comprueba que esto es así como se ve en la figura 2.
+
+
+
+    Los resultados sobre el testset se ven en la siguiente tabla:
+    \begin{center}
+        \begin{tabular}{||l | c||}
+            \hline
+            Modelo & F1-score \\ [0.5ex]
+            \hline\hline
+            Baseline & 0.4 \\
+            \hline
+            VGG16 & 0.9254 \\
+            \hline
+            DenseNet121 feat\_ext & 0.8374 \\
+            \hline
+            \textbf{DenseNet121  final} & \textbf{0.9543} \\
+            \hline
+        \end{tabular}
+    \end{center}
 
 
     \section{Conclusiones}
+
+    Se generan 2 modelos que son capaces de superar el baseline de F1-score de 0.4. Uno de ellos alcanzando un valor
+    máximo de 0.95 con menos de la mitad de parámetros que el modelo VGG16.
+
 
     \newpage
     \bibliographystyle{plain}
